@@ -28,10 +28,9 @@ module Paperclip
                                nil
                            end
               if data.exif?
-                  unless data.gps_latitude.nil? and data.gps_longitude.nil?
-                      latitude, longitude = [:latitude, :longitude].collect do |coord|
-                          from_dms_to_degrees(data.send("gps_#{coord}"), data.send("gps_#{coord}_ref"))
-                      end
+                  unless data.gps.nil?
+                      latitude = data.gps.latitude
+                      longitude = data.gps.longitude
                   end
               end
           rescue Exception => e
@@ -76,17 +75,5 @@ module Paperclip
       end
     end    
 
-    def from_dms_to_degrees(dms, orientation)
-        d,m,s = dms
-        total_seconds = m*60 + s
-        fractional_part = total_seconds / 3600
-        abs_value = (d + fractional_part).to_f
-        case orientation
-            when 'W' || 'S'
-                -abs_value
-            else
-                abs_value
-        end
-    end
   end
 end
