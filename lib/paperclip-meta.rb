@@ -27,13 +27,25 @@ module Paperclip
                            else
                                nil
                            end
-          rescue
+              if data.exif?
+                  unless data.gps_latitude.nil? and data.gps_longitude.nil?
+                      latitude, longitude = [:latitude, :longitude].collect do |coord|
+                          from_dms_to_degrees(data.send("gps_#{coord}"), data.send("gps_#{coord}_ref"))
+                      end
+                  end
+              end
+          rescue Exception => e
               date_taken = nil
+              latitude = nil
+              longitude = nil
           end
+
           begin
             geo = Geometry.from_file file
             meta[style] = {:width => geo.width.to_i, :height => geo.height.to_i,
-                           :size => File.size(file), :date_taken => date_taken}
+                           :size => File.size(file), :date_taken => date_taken,
+                           :latitude => latitude, :longitude => longitude
+                          }
           rescue NotIdentifiedByImageMagickError => e
             meta[style] = {}
           end
@@ -44,7 +56,7 @@ module Paperclip
     end
 
     # Meta access methods
-    [:width, :height, :size, :date_taken].each do |meth|
+    [:width, :height, :size, :date_taken, :latitude, :longitude].each do |meth|
       define_method(meth) do |*args|
         style = args.first || default_style
         meta_read(style, meth)
@@ -63,5 +75,18 @@ module Paperclip
         end
       end
     end    
+
+    def from_dms_to_degrees(dms, orientation)
+        d,m,s = dms
+        total_seconds = m*60 + s
+        fractional_part = total_seconds / 3600
+        abs_value = (d + fractional_part).to_f
+        case orientation
+            when 'W' || 'S'
+                -abs_value
+            else
+                abs_value
+        end
+    end
   end
 end
